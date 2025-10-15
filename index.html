@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Watering Robot Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .connection-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-connect {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-connect:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-disconnect {
+            background: #dc3545;
+            color: white;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .control-section {
+            display: none;
+        }
+
+        .control-section.active {
+            display: block;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            margin-bottom: 25px;
+        }
+
+        .direction-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto 20px;
+        }
+
+        .control-btn {
+            padding: 20px;
+            background: #667eea;
+            color: white;
+            font-size: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            background: #5568d3;
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-up { grid-column: 2; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-stop { grid-column: 2; grid-row: 2; background: #dc3545; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 3; }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-water {
+            background: #28a745;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-water:hover {
+            background: #218838;
+        }
+
+        .btn-auto {
+            background: #ffc107;
+            color: #333;
+            flex: 1;
+        }
+
+        .btn-auto:hover {
+            background: #e0a800;
+        }
+
+        .btn-auto.active {
+            background: #28a745;
+            color: white;
+        }
+
+        .robot-status {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .example {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Plant Robot Control</h1>
+        <p class="subtitle">by Piyush Pawar</p>
+
+        <!-- Connection Section -->
+        <div class="connection-section">
+            <div class="status disconnected" id="statusDisplay">
+                ⚠️ Not Connected
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="ipInput" placeholder="Enter ESP32 IP Address" value="192.168.1.100">
+                <button class="btn-connect" id="connectBtn" onclick="connect()">Connect</button>
+            </div>
+            <p class="example">Example: 192.168.1.100</p>
+        </div>
+
+        <!-- Control Section (Hidden until connected) -->
+        <div class="control-section" id="controlSection">
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Soil Moisture</div>
+                    <div class="stat-value" id="moisture">--</div>
+                    <div class="stat-label">%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Robot Status</div>
+                    <div class="stat-value" id="robotStatus" style="font-size: 18px;">Idle</div>
+                </div>
+            </div>
+
+            <!-- Direction Controls -->
+            <div class="controls">
+                <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">Movement Control</h3>
+                <div class="direction-pad">
+                    <button class="control-btn btn-up" onclick="move('forward')">▲</button>
+                    <button class="control-btn btn-left" onclick="move('left')">◄</button>
+                    <button class="control-btn btn-stop" onclick="move('stop')">⬛</button>
+                    <button class="control-btn btn-right" onclick="move('right')">►</button>
+                    <button class="control-btn btn-down" onclick="move('backward')">▼</button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn-water" onclick="waterPlant()">💧 Water Plant</button>
+                <button class="btn-auto" id="autoBtn" onclick="toggleAuto()">🤖 Auto Mode</button>
+            </div>
+
+            <div class="robot-status" id="statusText">
+                Ready for commands
+            </div>
+
+            <button class="btn-disconnect" onclick="disconnect()" style="width: 100%; margin-top: 20px;">
+                Disconnect
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let robotIP = '';
+        let isConnected = false;
+        let autoMode = false;
+        let updateInterval;
+
+        function connect() {
+            const ip = document.getElementById('ipInput').value.trim();
+            
+            if (!ip) {
+                alert('Please enter IP address!');
+                return;
+            }
+
+            robotIP = `http://${ip}`;
+            
+            // Test connection
+            fetch(`${robotIP}/status`)
+                .then(response => response.json())
+                .then(data => {
+                    isConnected = true;
+                    document.getElementById('statusDisplay').className = 'status connected';
+                    document.getElementById('statusDisplay').textContent = '✅ Connected to Robot';
+                    document.getElementById('controlSection').classList.add('active');
+                    
+                    // Start updating status
+                    updateInterval = setInterval(updateStatus, 1000);
+                    
+                    updateStatus();
+                })
+                .catch(error => {
+                    alert('Failed to connect! Make sure:\n1. IP address is correct\n2. Robot is powered on\n3. Both devices are on same WiFi');
+                    console.error('Connection error:', error);
+                });
+        }
+
+        function disconnect() {
+            isConnected = false;
+            clearInterval(updateInterval);
+            document.getElementById('statusDisplay').className = 'status disconnected';
+            document.getElementById('statusDisplay').textContent = '⚠️ Not Connected';
+            document.getElementById('controlSection').classList.remove('active');
+        }
+
+        function updateStatus() {
+            if (!isConnected) return;
+
+            fetch(`${robotIP}/status`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('moisture').textContent = data.moisture;
+                    document.getElementById('robotStatus').textContent = data.status;
+                    autoMode = data.autoMode;
+                    
+                    const autoBtn = document.getElementById('autoBtn');
+                    if (autoMode) {
+                        autoBtn.classList.add('active');
+                        autoBtn.textContent = '🤖 Auto ON';
+                    } else {
+                        autoBtn.classList.remove('active');
+                        autoBtn.textContent = '🤖 Auto Mode';
+                    }
+                    
+                    // Update status text color based on moisture
+                    if (data.moisture < 30) {
+                        document.getElementById('statusText').textContent = '⚠️ Plant needs water!';
+                    } else {
+                        document.getElementById('statusText').textContent = '✅ Plant moisture is good';
+                    }
+                })
+                .catch(error => {
+                    console.error('Status update error:', error);
+                    document.getElementById('statusText').textContent = '❌ Connection lost';
+                });
+        }
+
+        function move(direction) {
+            if (!isConnected) return;
+
+            fetch(`${robotIP}/${direction}`)
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => console.error('Move error:', error));
+        }
+
+        function waterPlant() {
+            if (!isConnected) return;
+
+            if (confirm('Water the plant now?')) {
+                fetch(`${robotIP}/water`)
+                    .then(response => response.text())
+                    .then(data => {
+                        document.getElementById('statusText').textContent = '💧 Watering plant...';
+                        setTimeout(updateStatus, 3000);
+                    })
+                    .catch(error => console.error('Water error:', error));
+            }
+        }
+
+        function toggleAuto() {
+            if (!isConnected) return;
+
+            fetch(`${robotIP}/auto`)
+                .then(response => response.text())
+                .then(data => {
+                    autoMode = !autoMode;
+                    updateStatus();
+                })
+                .catch(error => console.error('Auto mode error:', error));
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!isConnected) return;
+            
+            switch(e.key) {
+                case 'ArrowUp': move('forward'); break;
+                case 'ArrowDown': move('backward'); break;
+                case 'ArrowLeft': move('left'); break;
+                case 'ArrowRight': move('right'); break;
+                case ' ': move('stop'); break;
+            }
+        });
+    </script>
+</body>
+</html>
